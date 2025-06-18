@@ -32,6 +32,7 @@ import java.util.Arrays;
 
 public class NonGCCharSequenceIntHashMap extends AbstractOffsetCharSequenceHashSet {
     public static final int NO_ENTRY_VALUE = -1;
+    private final LongList indexes;
     private final int noEntryValue;
     private int[] values;
     private final MemoryPARWImpl memory;
@@ -50,6 +51,7 @@ public class NonGCCharSequenceIntHashMap extends AbstractOffsetCharSequenceHashS
         this.noEntryValue = noEntryValue;
         this.memory = new MemoryPARWImpl(1024 * 1024L, Integer.MAX_VALUE, MemoryTag.NATIVE_DEFAULT);
         values = new int[offsets.length];
+        this.indexes = new LongList(capacity);
         clear();
     }
 
@@ -63,6 +65,14 @@ public class NonGCCharSequenceIntHashMap extends AbstractOffsetCharSequenceHashS
 
     public int get(@NotNull CharSequence key) {
         return valueAt(keyIndex(key));
+    }
+
+    public CharSequence getFromIndex(int index) {
+        return getCharSequence(indexes.get(index));
+    }
+
+    public CharSequence getQuickFromIndex(int index) {
+        return getCharSequence(indexes.getQuick(index));
     }
 
     public boolean put(@NotNull CharSequence key, int value) {
@@ -87,6 +97,7 @@ public class NonGCCharSequenceIntHashMap extends AbstractOffsetCharSequenceHashS
 
         final long offset = this.writeKey(key);
         putAt0(index, offset, value);
+        indexes.add(offset);
         return true;
     }
 
@@ -95,6 +106,7 @@ public class NonGCCharSequenceIntHashMap extends AbstractOffsetCharSequenceHashS
         if (index > -1) {
             long offset = this.writeKey(key);
             putAt0(index, offset, value);
+            indexes.add(offset);
         }
     }
 
@@ -102,7 +114,7 @@ public class NonGCCharSequenceIntHashMap extends AbstractOffsetCharSequenceHashS
         this.memory.putStr(currentOffset, key);
 
         final long oldOffset = currentOffset;
-        currentOffset += (key.length() << 1) + 4;
+        currentOffset += ((long) key.length() << 1) + 4;
 
         return oldOffset;
     }
