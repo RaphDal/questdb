@@ -41,12 +41,16 @@ public class NonGCCharSequenceIntHashMapTest {
         final NonGCCharSequenceIntHashMap map = new NonGCCharSequenceIntHashMap();
         final Rnd rnd = TestUtils.generateRandom(LOG);
 
+        int inserted = 0;
         for (int i = 0; i < N; i++) {
             final CharSequence key = rnd.nextChars(8);
             final int value = rnd.nextInt();
-            map.put(key, value);
+            if (map.put(key, value)) {
+                inserted++;
+            }
             Assert.assertEquals(value, map.get(key));
         }
+        Assert.assertEquals(inserted, map.size());
 
         map.clear();
 
@@ -62,4 +66,36 @@ public class NonGCCharSequenceIntHashMapTest {
 
         Assert.assertEquals(2, map.get("foo"));
     }
+
+    @Test
+    public void testKeyOrder() {
+        final NonGCCharSequenceIntHashMap map = new NonGCCharSequenceIntHashMap();
+
+        map.put("foo", 1);
+        map.put("bar", 2);
+
+        Assert.assertEquals("foo", map.getQuickFromIndex(0).toString());
+        Assert.assertEquals("bar", map.getQuickFromIndex(1).toString());
+    }
+
+    @Test
+    public void testContains() {
+        final NonGCCharSequenceIntHashMap map = new NonGCCharSequenceIntHashMap();
+
+        map.put("foo", 1);
+
+        Assert.assertTrue(map.contains("foo"));
+        Assert.assertFalse(map.contains("bar"));
+    }
+
+    @Test
+    public void testPutIfAbsent() {
+        final NonGCCharSequenceIntHashMap map = new NonGCCharSequenceIntHashMap();
+
+        map.putIfAbsent("foo", 1);
+        map.putIfAbsent("foo", 2);
+
+        Assert.assertEquals(1, map.get("foo"));
+    }
+
 }
