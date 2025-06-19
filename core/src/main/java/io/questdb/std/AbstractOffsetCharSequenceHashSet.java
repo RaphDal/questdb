@@ -30,11 +30,11 @@ import java.util.Arrays;
 
 public abstract class AbstractOffsetCharSequenceHashSet implements Mutable {
     protected static final int MIN_INITIAL_CAPACITY = 16;
-    protected static final long noEntryOffset = -1;
+    protected static final int noEntryOffset = -1;
     protected final double loadFactor;
     protected int capacity;
     protected int free;
-    protected long[] offsets;
+    protected int[] offsets;
     protected int mask;
 
     public AbstractOffsetCharSequenceHashSet(int initialCapacity, double loadFactor) {
@@ -45,7 +45,7 @@ public abstract class AbstractOffsetCharSequenceHashSet implements Mutable {
         free = this.capacity = initialCapacity < MIN_INITIAL_CAPACITY ? MIN_INITIAL_CAPACITY : Numbers.ceilPow2(initialCapacity);
         this.loadFactor = loadFactor;
         int len = Numbers.ceilPow2((int) (this.capacity / loadFactor));
-        offsets = new long[len];
+        offsets = new int[len];
         Arrays.fill(offsets, noEntryOffset);
         mask = len - 1;
     }
@@ -64,12 +64,8 @@ public abstract class AbstractOffsetCharSequenceHashSet implements Mutable {
         return keyIndex(key) > -1;
     }
 
-    public CharSequence keyAt(int index) {
-        final long offset = offsets[-index-1];
-        if (offset == noEntryOffset) {
-            return null;
-        }
-        return this.getCharSequence(offset);
+    protected long keyAt(int index) {
+        return offsets[-index-1];
     }
 
     /**
@@ -81,33 +77,46 @@ public abstract class AbstractOffsetCharSequenceHashSet implements Mutable {
      * or the negative index of the key if it's already present.
      */
     public int keyIndex(@NotNull CharSequence key) {
-        int index = Hash.spread(Chars.hashCode(key)) & mask;
-        long offset = offsets[index];
+        int hashCode = Chars.hashCode(key);
+        return keyIndex(key, hashCode);
+    }
+
+    /**
+     * Returns the index of a free slot where this key can be placed.
+     * Returns the negative index of the key if it's already present.
+     *
+     * @param key the key whose slot to look for
+     * @param hashCode the hashCode of the key
+     * @return the index of a free slot where this key can be placed,
+     * or the negative index of the key if it's already present.
+     */
+    public int keyIndex(@NotNull CharSequence key, int hashCode) {
+        int index = Hash.spread(hashCode) & mask;
+        int offset = offsets[index];
         if (offset == noEntryOffset) {
             return index;
         }
-        CharSequence cs = this.getCharSequence(offset);
-        if (Chars.equals(key, cs)) {
+        if (areKeysEquals(offset, key, hashCode)) {
             return -index - 1;
         }
-        return probe(key, index);
+        return probe(key, hashCode, index);
     }
 
     public int size() {
         return capacity - free;
     }
 
-    private int probe(CharSequence key, int index) {
+    private int probe(@NotNull CharSequence key, int hashCode, int index) {
         do {
             index = (index + 1) & mask;
             if (offsets[index] == noEntryOffset) {
                 return index;
             }
-            if (Chars.equals(key, this.getCharSequence(offsets[index]))) {
+            if (areKeysEquals(offsets[index], key, hashCode)) {
                 return -index - 1;
             }
         } while (true);
     }
 
-    abstract protected CharSequence getCharSequence(long offset);
+    abstract protected boolean areKeysEquals(int offset, @NotNull CharSequence key, int keyHashCode);
 }
