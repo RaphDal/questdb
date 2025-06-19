@@ -36,7 +36,6 @@ import io.questdb.cairo.vm.api.MemoryMARW;
 import io.questdb.griffin.SqlExecutionContext;
 import io.questdb.std.AtomicIntList;
 import io.questdb.std.BoolList;
-import io.questdb.std.CharSequenceIntHashMap;
 import io.questdb.std.Files;
 import io.questdb.std.FilesFacade;
 import io.questdb.std.MemoryTag;
@@ -61,7 +60,7 @@ class WalEventWriter implements Closeable {
     private long startOffset = 0;
     private BoolList symbolMapNullFlags;
     private int txn = 0;
-    private ObjList<CharSequenceIntHashMap> txnSymbolMaps;
+    private ObjList<SymbolMap> txnSymbolMaps;
 
     WalEventWriter(CairoConfiguration configuration) {
         this.configuration = configuration;
@@ -256,7 +255,7 @@ class WalEventWriter implements Closeable {
     private void writeSymbolMapDiffs() {
         final int columns = txnSymbolMaps.size();
         for (int columnIndex = 0; columnIndex < columns; columnIndex++) {
-            final CharSequenceIntHashMap symbolMap = txnSymbolMaps.getQuick(columnIndex);
+            final SymbolMap symbolMap = txnSymbolMaps.getQuick(columnIndex);
             if (symbolMap != null) {
                 final int initialCount = initialSymbolCounts.get(columnIndex);
                 if (initialCount > 0 || (initialCount == 0 && symbolMap.size() > 0)) {
@@ -269,8 +268,8 @@ class WalEventWriter implements Closeable {
                     eventMem.putInt(size);
 
                     int symbolCount = 0;
-                    for (int j = 0; j < size; j++) {
-                        final CharSequence symbol = symbolMap.keys().getQuick(j);
+                    for (int offset = symbolMap.nextOffset(); offset >= 0; offset = symbolMap.nextOffset(offset)) {
+                        final CharSequence symbol = symbolMap.get(offset);
                         assert symbol != null;
                         final int value = symbolMap.get(symbol);
                         // Ignore symbols cached from symbolMapReader
@@ -372,7 +371,7 @@ class WalEventWriter implements Closeable {
         return txn++;
     }
 
-    void of(ObjList<CharSequenceIntHashMap> txnSymbolMaps, AtomicIntList initialSymbolCounts, BoolList symbolMapNullFlags) {
+    void of(ObjList<SymbolMap> txnSymbolMaps, AtomicIntList initialSymbolCounts, BoolList symbolMapNullFlags) {
         this.txnSymbolMaps = txnSymbolMaps;
         this.initialSymbolCounts = initialSymbolCounts;
         this.symbolMapNullFlags = symbolMapNullFlags;
