@@ -119,12 +119,6 @@ public class WalWriterSymbolBenchmark {
         new Runner(opt).run();
     }
 
-    @Setup(Level.Invocation)
-    public void reset() {
-        hmap.clear();
-        symbolHashMap.clear();
-    }
-
     @Benchmark
     public void CharSequenceIntHashMap(State state) {
         for (int i = 0; i < state.indices.length; i++) {
