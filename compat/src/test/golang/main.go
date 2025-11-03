@@ -3,13 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"gorunner/drivers"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
+
+	pgxdecimal "github.com/jackc/pgx-shopspring-decimal"
+	"github.com/shopspring/decimal"
 )
 
 func init() {
@@ -345,6 +349,8 @@ func (tr *TestRunner) formatValue(value interface{}) interface{} {
 	case []interface{}:
 		// Handle array values
 		return tr.formatArrayValue(v)
+	case decimal.Decimal:
+		return v.String()
 	}
 	return value
 }
@@ -647,6 +653,7 @@ func (tr *TestRunner) main(yamlFile string) error {
 			if err := driver.Connect(ctx, connString); err != nil {
 				return fmt.Errorf("unable to connect to database: %v", err)
 			}
+			pgxdecimal.Register(conn.TypeMap())
 
 			tr.driver = driver
 			err = tr.runTest(ctx, test, config.Variables)
